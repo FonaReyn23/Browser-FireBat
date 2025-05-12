@@ -1,11 +1,12 @@
 import sys
-
+import os
 from PyQt5.Qt import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtWebEngineWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
+from PyQt5.QtPrintSupport import *
 import webbrowser
 
 class MainWindow(QMainWindow):
@@ -27,6 +28,9 @@ class MainWindow(QMainWindow):
         navtb = QToolBar()
         navtb.setMovable(False)
         self.addToolBar(navtb)
+
+        # Контекстное меню
+        self.setup_context_menu()
         
         # кнопки навигации
 
@@ -60,7 +64,8 @@ class MainWindow(QMainWindow):
 
         self.setStyleSheet("""
             QWebEngineView {
-                background-color: #191919;         
+                background-color: #191919;
+                padding: 5px;         
             }
             QMainWindow {
                 background-color: #1d1d1d;
@@ -69,39 +74,69 @@ class MainWindow(QMainWindow):
             QToolBar {
                 padding: 5px;
                 background-color: #191919;
+                border-bottom: 1px solid #333;
             }
             QLineEdit {
                 padding: 2px;
-                border-radius: 5px;
+                border-radius: 15px;
                 border: 1px;
                 height: 28px;
             }
             QToolButton {
-                background-color: #404040;
-                border-radius: 5px;
-                min-width: 50px;
-                padding: 5px 8px;
+                background-color: rgb(42, 46, 48);
+                border-radius: 15px;
+                min-width: 25px;
+                padding: 5px;
                 border: 1px;
                 color: #f5f5f5;
                 font-size: 15pt;
             }
             QToolButton:hover {
-                background-color: #555555;
+                background: rgb(57, 61, 64);
+            }
+            QTabBar {
+                background: #1d1d1d;
+                padding: 0px;
+                margin-top: 50px;
             }
             QTabBar::tab {
-                background: #444;
+                background: rgb(42, 46, 48);
                 color: #fff;
                 padding: 7px;
                 width: 100px;
+                border-radius: 11px;
+                margin-top: 5px;
+                margin-bottom: 5px;
+                margin-right: 2px;
             }
             QTabBar::tab:selected {
-                background: #555;
+                background: rgb(57, 61, 64);
+                border: 2px solid rgb(102,157,246);
+            }
+            QTabWidget::pane {
+                border: none;
+                top: -1px;
             }
 """)
-
-
+        
         # Добавить начальную вкладку
         self.add_new_tab(QUrl('https://www.google.com'), 'Главная')
+
+    def setup_context_menu(self):
+        self.menu = QMenu(self)
+
+        actions = [
+            ("Новая вкладка", self.add_new_tab, None),
+            ("Закрыть вкладку", self.close_tab, None),
+            ("Обновить", lambda: self.current_browser().reload(), None)
+        ]
+
+        for text, handler, shortcut in actions:
+            action = QAction(text, self)
+            action.triggered.connect(handler)
+            if shortcut:
+                action.setShortcut(QKeySequence(shortcut))
+            self.menu.addAction(action)
 
     def add_new_tab(self, qurl=None, label="Новая вкладка"):
         if qurl is None:
@@ -109,6 +144,7 @@ class MainWindow(QMainWindow):
         
         browser = QWebEngineView()
         browser.setUrl(qurl)
+        
         
         # Подключить сигналы
         browser.urlChanged.connect(lambda qurl, browser=browser: self.update_urlbar(qurl, browser))
@@ -148,6 +184,9 @@ class MainWindow(QMainWindow):
             return
         self.urlbar.setText(q.toString())
         self.urlbar.setCursorPosition(0)
+
+    def contextMenuEvent(self, event):
+        self.menu.exec_(event.globalPos())
 
 app = QApplication(sys.argv)
 app.setWindowIcon(QIcon("logo1.png"))
