@@ -323,7 +323,7 @@ class MainWindow(QMainWindow):
         self.menu.exec_(event.globalPos())
 
     def abtProg(self):
-        QMessageBox.about(self, "О программе", "\nВерсия 1.0\n\nСоздано на PyQt5")
+        QMessageBox.about(self, "О программе", "\nВерсия 1.1\n\nСоздано на PyQt5")
 
     def handle_download(self, download):
         path, _ = QFileDialog.getSaveFileName(
