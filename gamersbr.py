@@ -1,13 +1,11 @@
 import sys
 import os
-from PyQt6 import *
 from PyQt5.Qt import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtWebEngineWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtPrintSupport import *
-import webbrowser
 
 
 class DownloadManager(QWidget):
@@ -63,82 +61,129 @@ class MainWindow(QMainWindow):
         #инициализация менеджера загрузок
         self.download_manager = DownloadManager()
 
+
+        centralWidget = QWidget()
+        self.setCentralWidget(centralWidget)
+        mainLayout = QVBoxLayout(centralWidget)
+        mainLayout.setContentsMargins(0, 0, 0, 0)
+        mainLayout.setSpacing(0)
+
         # Настройка вкладок
-        self.tabs = QTabWidget()
+        self.tabs = QTabBar()
         self.tabs.setTabsClosable(True)
         self.tabs.tabCloseRequested.connect(self.close_tab)
-        self.setCentralWidget(self.tabs)
+        self.tabs.currentChanged.connect(self.switch_tab)
+        mainLayout.addWidget(self.tabs)
+        
         
         # Панель инструментов
-        navtb = QToolBar()
-        navtb.setMovable(False)
-        navtb.setIconSize(QSize(24,24))
-        navtb.setGeometry(200,200,200,200)
-        self.addToolBar(navtb)
-
+        navtb = QWidget()
+        navlt = QHBoxLayout(navtb)
+        mainLayout.addWidget(navtb)
+        navlt.setContentsMargins(5, 5, 5, 5)
         # Контекстное меню
         self.setup_context_menu()
         
         # кнопки навигации
 
-        back_btn = QAction("⇦", self)
-        back_btn.setIcon(QIcon("icons/back_btn.png"))
-        back_btn.triggered.connect(lambda: self.current_browser().back())
-        navtb.addAction(back_btn)
-        
+        # Кнопка "Назад"
+        back_btn = QPushButton()
+        back_btn.setIcon(QIcon("back_btn.png"))
+        back_btn.setToolTip("Назад")
+        back_btn.clicked.connect(lambda: self.current_browser().back())
+        navlt.addWidget(back_btn)
 
-        next_btn = QAction("⇨", self)
-        next_btn.setIcon(QIcon("icons/forward_btn.png"))
-        next_btn.triggered.connect(lambda: self.current_browser().forward())
-        navtb.addAction(next_btn)
+        # Кнопка "Вперёд"
+        forward_btn = QPushButton()
+        forward_btn.setIcon(QIcon("forward_btn.png"))
+        forward_btn.setToolTip("Вперёд")
+        forward_btn.clicked.connect(lambda: self.current_browser().forward())
+        navlt.addWidget(forward_btn)
 
-        reload_btn = QAction("↻", self)
-        reload_btn.setIcon(QIcon("icons/reload_btn.png"))
-        reload_btn.triggered.connect(lambda: self.current_browser().reload())
-        navtb.addAction(reload_btn)
+        # Кнопка "Обновить"
+        reload_btn = QPushButton()
+        reload_btn.setIcon(QIcon("reload_btn.png"))
+        reload_btn.setToolTip("Обновить")
+        reload_btn.clicked.connect(lambda: self.current_browser().reload())
+        navlt.addWidget(reload_btn)
 
-        home_btn = QAction("⌂", self)
-        home_btn.setIcon(QIcon("icons/home_btn.png"))
-        home_btn.triggered.connect(self.home_button)
-        navtb.addAction(home_btn)
+        # Кнопка "Домой"
+        home_btn = QPushButton()
+        home_btn.setIcon(QIcon("home_btn.png"))
+        home_btn.setToolTip("Домашняя страница")
+        home_btn.clicked.connect(self.home_button)
+        navlt.addWidget(home_btn)
 
+        # Строка URL
         self.urlbar = QLineEdit()
-        self.urlbar.setPlaceholderText("Введите url или поисковой запрос")
+        self.urlbar.setPlaceholderText("Введите URL или поисковый запрос")
         self.urlbar.returnPressed.connect(self.navigate_to_url)
-        navtb.addWidget(self.urlbar)
-        self.show()
+        navlt.addWidget(self.urlbar)
 
-        # Кнопка новой вкладки
-        new_tab_btn = QAction('+', self)
-        new_tab_btn.setIcon(QIcon("icons/new_tab_btn.png"))
-        new_tab_btn.triggered.connect(lambda: self.add_new_tab())
-        navtb.addAction(new_tab_btn)
+        # Кнопка "Новая вкладка"
+        new_tab_btn = QPushButton()
+        new_tab_btn.setIcon(QIcon("new_tab_btn.png"))
+        new_tab_btn.setToolTip("Новая вкладка")
+        new_tab_btn.clicked.connect(self.add_new_tab)
+        navlt.addWidget(new_tab_btn)
 
-        # Кнопка менеджера загрузок
-        downloads_btn = QAction("↓", self)
-        downloads_btn.setIcon(QIcon("icons/downloads_btn.png"))
-        downloads_btn.triggered.connect(self.show_downloads)
-        navtb.addAction(downloads_btn)
+        # Кнопка "Загрузки"
+        downloads_btn = QPushButton()
+        downloads_btn.setIcon(QIcon("downloads_btn.png"))
+        downloads_btn.setToolTip("Менеджер загрузок")
+        downloads_btn.clicked.connect(self.show_downloads)
+        navlt.addWidget(downloads_btn)
+
+        # Кнопка "О программе"
+        about_btn = QPushButton()
+        about_btn.setIcon(QIcon("Frame 14.svg"))
+        about_btn.setToolTip("О программе")
+        about_btn.clicked.connect(self.abtProg)
+        navlt.addWidget(about_btn)
+
+         # 3. Стек страниц браузера
+        self.stack = QStackedWidget()
+        mainLayout.addWidget(self.stack)
+
+        # --- Настройка профиля для загрузок (один раз) ---
+        self.profile = QWebEngineProfile.defaultProfile()
+        self.profile.downloadRequested.connect(self.handle_download)
 
         self.setStyleSheet("""
-            QWebEngineView {
-                background-color: #191919;
-                padding: 5px;   
-                border-radius: 10px;      
-            }
             QMainWindow {
                 background-color: #1d1d1d;
+            }
+            QTabBar {
+                background: #212121;
+                qproperty-drawBase: 0;
+                border-bottom: 1px solid #333;
+            }
+            QTabBar::tab {
+                background: rgb(42, 46, 48);
+                color: #fff;
+                padding: 7px;
+                width: 100px;
                 border-radius: 15px;
             }
-            QToolBar {
-                padding: 5px;
-                background-color: #191919;
-                border-bottom: 1px solid #333;
+            QTabBar::tab:selected {
+                background: rgb(57, 61, 64);
+                border: 2px solid rgb(102,157,246);
+            }
+            QPushButton {
+                min-width: 22px;
+                min-height: 22px;
+                padding: 6px;
+                border-radius: 16px;
+                background: transparent;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: rgb(42, 46, 48);
             }
             QLineEdit {
                 padding: 2px;
-                border-radius: 15px;
-                border: 1px;
+                border-radius: 16px;
+                border: 1px solid #333;
                 height: 32px;
                 color: #f5f5f5;
                 background-color: rgb(64, 80, 110);
@@ -151,53 +196,122 @@ class MainWindow(QMainWindow):
                 color: #1a1a1a;
                 border: 2px solid rgb(102,157,246);
             }
-            QToolButton {
-                min-width: 25px;
-                padding: 6px;
-                color: #f5f5f5;
-                font-size: 16pt;
-                border-radius: 15px;            }
-            QToolButton:hover {
-                background-color: rgb(42, 46, 48);
-            }
-            QTabBar {
-                background: #1d1d1d;
-                padding: 0px;
-                margin-top: 50px;
-            }
-            QTabBar::tab {
-                background: rgb(42, 46, 48);
-                color: #fff;
-                padding: 7px;
-                width: 100px;
-                border-radius: 11px;
-                margin-top: 3px;
-                margin-bottom: 5px;
-                margin-right: 2px;
-                margin-left: 2px;
-            }
-            QTabBar::tab:selected {
-                background: rgb(57, 61, 64);
-                border: 2px solid rgb(102,157,246);
-            }
-            QTabWidget::pane {
+            QStackedWidget {
                 border: none;
-                top: -1px;
             }
-""")
+        """)
+
+        self.setup_context_menu()
         
         # Добавить начальную вкладку
         self.add_new_tab(QUrl('https://www.google.com'), 'Главная')
 
+    def add_new_tab(self, qurl=None, label="Новая вкладка"):
+        if qurl is None:
+            qurl = QUrl('https://www.google.com')
+        elif isinstance(qurl, bool):  # защита от случайного bool
+            qurl = QUrl("https://www.google.com")
+        
+        browser = QWebEngineView()
+        browser.setUrl(qurl)
+        
+        # Добавляем браузер в стек
+        self.stack.addWidget(browser)
+
+        # Подключаем сигналы браузера
+        browser.urlChanged.connect(lambda url, b=browser: self.update_urlbar(url, b))
+        browser.loadFinished.connect(lambda _, b=browser: self.update_title(b))
+
+        #Сохранение вкладки в сам браузер
+        tabIndex = self.tabs.addTab(label)
+        self.tabs.setTabData(tabIndex, browser)
+        
+        # Добавить вкладку
+        self.tabs.setCurrentIndex(tabIndex)
+        self.stack.setCurrentWidget(browser)
+
+    def close_tab(self, tab_index):
+        """Закрывает вкладку по её индексу."""
+        if self.tabs.count() > 1:
+            browser = self.tabs.tabData(tab_index)
+            self.stack.removeWidget(browser)
+            browser.deleteLater()       # освобождаем память
+            self.tabs.removeTab(tab_index)
+        else:
+            self.close()               # последняя вкладка – закрыть окно
+
+    def switch_tab(self, tab_index):
+        """Переключает стек при выборе другой вкладки."""
+        browser = self.tabs.tabData(tab_index)
+        if browser:
+            self.stack.setCurrentWidget(browser)
+            # Обновляем адресную строку
+            self.urlbar.setText(browser.url().toString())
+            self.urlbar.setCursorPosition(0)
+
+
+    def current_browser(self):
+        currentIdx = self.tabs.currentIndex()
+        if currentIdx >= 0 :
+            return self.tabs.tabData(currentIdx)
+        return None
+
+    def update_title(self, browser):
+        """Обновляет заголовок вкладки и окна."""
+        # Ищем, какой вкладке принадлежит этот браузер
+        for tab_idx in range(self.tabs.count()):
+            if self.tabs.tabData(tab_idx) is browser:
+                title = browser.page().title()
+                short_title = title[:15] + "..." if len(title) > 15 else title
+                self.tabs.setTabText(tab_idx, short_title)
+                self.setWindowTitle(f"{title} - FireBat")
+                break
+
+    def navigate_to_url(self):
+        """Переход по URL из адресной строки."""
+        url = self.urlbar.text().strip()
+        if not url:
+            return
+        q = QUrl(url)
+        if q.scheme() == "":
+            q.setScheme("https")
+        browser = self.current_browser()
+        if browser:
+            browser.setUrl(q)
+
+    def home_button(self):
+        """Переход на домашнюю страницу."""
+        browser = self.current_browser()
+        if browser:
+            browser.setUrl(QUrl("https://www.google.com/"))
+
+    def update_urlbar(self, url, browser=None):
+        """Обновляет текст в адресной строке при смене URL."""
+        if browser != self.current_browser():
+            return
+        self.urlbar.setText(url.toString())
+        self.urlbar.setCursorPosition(0)
+
+    def home_button(self):
+        """Переход на домашнюю страницу."""
+        browser = self.current_browser()
+        if browser:
+            browser.setUrl(QUrl("https://www.google.com/"))
+
+    def update_urlbar(self, url, browser=None):
+        """Обновляет текст в адресной строке при смене URL."""
+        if browser != self.current_browser():
+            return
+        self.urlbar.setText(url.toString())
+        self.urlbar.setCursorPosition(0)
+
     def setup_context_menu(self):
         self.menu = QMenu(self)
-
         actions = [
             ("Новая вкладка", self.add_new_tab, None),
-            ("Закрыть вкладку", self.close_tab, None),
+            ("Закрыть вкладку", lambda: self.close_tab(self.tabs.currentIndex()), None),
             ("Обновить", lambda: self.current_browser().reload(), None)
         ]
-
         for text, handler, shortcut in actions:
             action = QAction(text, self)
             action.triggered.connect(handler)
@@ -205,69 +319,18 @@ class MainWindow(QMainWindow):
                 action.setShortcut(QKeySequence(shortcut))
             self.menu.addAction(action)
 
-    def add_new_tab(self, qurl=None, label="Новая вкладка"):
-        if qurl is None:
-            qurl = QUrl('https://www.google.com')
-        
-        browser = QWebEngineView()
-        browser.setUrl(qurl)
-        
-        # Настройка загрузки файлов
-        profile = QWebEngineProfile.defaultProfile()
-        profile.downloadRequested.connect(self.handle_download)
-
-        # Подключить сигналы
-        browser.urlChanged.connect(lambda qurl, browser=browser: self.update_urlbar(qurl, browser))
-        browser.loadFinished.connect(lambda _, browser=browser: self.update_title(browser))
-        
-        # Добавить вкладку
-        i = self.tabs.addTab(browser, label)
-        self.tabs.setCurrentIndex(i)
-
-    def close_tab(self, i):
-        if self.tabs.count() > 1:
-            self.tabs.removeTab(i)
-
-    def current_browser(self):
-        return self.tabs.currentWidget()
-
-    def update_title(self, browser):
-        index = self.tabs.indexOf(browser)
-        title = browser.page().title()
-        self.tabs.setTabText(index, title[:15] + "..." if len(title) > 15 else title)
-        self.setWindowTitle(f"{title} - FireBat")
-
-    def navigate_to_url(self):
-        q = QUrl(self.urlbar.text())
-        if q.scheme() == "":
-            q.setScheme("https")
-        self.current_browser().setUrl(q)
-
-    def home_button(self):
-        self.browser.setUrl(QUrl("https://google.com/"))
-
-    def current_browser(self):
-        return self.tabs.currentWidget()
-
-    def update_urlbar(self, q, browser=None):
-        if browser != self.current_browser():
-            return
-        self.urlbar.setText(q.toString())
-        self.urlbar.setCursorPosition(0)
-
     def contextMenuEvent(self, event):
         self.menu.exec_(event.globalPos())
 
-    # downloads menu
+    def abtProg(self):
+        QMessageBox.about(self, "О программе", "\nВерсия 1.0\n\nСоздано на PyQt5")
 
     def handle_download(self, download):
-        # Запрос пути для сохранения файла
         path, _ = QFileDialog.getSaveFileName(
-            self, "Сохранить файл", 
+            self, "Сохранить файл",
             os.path.expanduser("~/Downloads/" + download.path().split('/')[-1]),
             "All Files (*)"
         )
-        
         if path:
             download.setPath(path)
             download.accept()
@@ -275,14 +338,16 @@ class MainWindow(QMainWindow):
             self.download_manager.add_download(download)
 
     def download_completed(self, download):
-        QMessageBox.information(self, "Загрузка завершена", 
-                              f"Файл {download.path().split('/')[-1]} успешно загружен!")
+        QMessageBox.information(self, "Загрузка завершена",
+                                f"Файл {download.path().split('/')[-1]} успешно загружен!")
 
     def show_downloads(self):
         self.download_manager.show()
 
-app = QApplication(sys.argv)
-app.setWindowIcon(QIcon("logo1.png"))
-window = MainWindow()
-window.show()
-sys.exit(app.exec_())
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    app.setWindowIcon(QIcon("logo1.png"))
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec_())
